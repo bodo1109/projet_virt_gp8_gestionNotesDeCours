@@ -1,0 +1,48 @@
+
+Liste des étapes suivies pour lancer le backend avec LocalStack :
+
+1. **Installation de Docker :**
+   - Télécharger et installer Docker Desktop depuis le site officiel.
+   - Vérifier l'installation avec `docker --version`.
+
+2. **Problème rencontré :**
+   - Docker Desktop affichait "Docker Engine stopped".
+   - Solution : Démarrer manuellement Docker Desktop.
+
+3. **Vérification de Docker en ligne de commande :**
+   - Taper `docker --version` pour s'assurer que Docker est installé.
+   - S'assurer que Docker Engine fonctionne (icône verte dans Docker Desktop).
+
+4. **Lancement de LocalStack :**
+   - Installer LocalStack CLI (si besoin) : `pip install localstack`
+   - Démarrer LocalStack : `localstack start`
+   - Vérifier que LocalStack fonctionne et qu'il utilise Docker.
+
+5. **Connexion à Docker Hub (résolution d'erreur 401 Unauthorized) :**
+   - Se connecter via la commande `docker login`.
+   - Entrer ses identifiants Docker Hub dans le navigateur.
+
+6. **Téléchargement manuel de l'image LocalStack (si besoin) :**
+   - Utiliser `docker pull localstack/localstack` pour forcer le téléchargement de l'image.
+
+7. **Lancement du script de setup :**
+   - Exécuter le fichier `localstack-setup.js` avec Node.js : `node localstack-setup.js`
+   - Le script :
+     - Crée un bucket S3 `student-notes-bucket`.
+     - Crée deux tables DynamoDB `Notes` et `Subjects`.
+     - Crée une fonction Lambda `search-notes`.
+   - Les erreurs liées à la recréation d'une table ou d'une fonction existante étaient normales au second lancement.
+
+8. **Vérification finale :**
+   - Confirmation que toutes les ressources LocalStack sont créées.
+   - Aucun vrai serveur Node.js d'API n'était lancé, seulement le script d'initialisation.
+   - Backend prêt pour utilisation avec LocalStack.
+
+Notes :
+- L'endpoint LocalStack est configuré en local : `http://localhost:4566`
+- Région : `us-east-1`
+- Credentials utilisés : `accessKeyId: test`, `secretAccessKey: test`
+
+Résumé :
+-> Le backend (ressources AWS simulées) tourne dans LocalStack via Docker.
+-> Le service Node.js réel (API REST par exemple) n'était pas nécessaire ici.
