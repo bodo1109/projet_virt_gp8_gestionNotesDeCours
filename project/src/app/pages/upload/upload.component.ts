@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { NoteService } from '../../services/note.service';
 import { SubjectService } from '../../services/subject.service';
 import { Subject } from '../../models/subject.model';
+import { Note } from '../../models/note.model';
 
 @Component({
   selector: 'app-upload',
@@ -207,65 +208,68 @@ import { Subject } from '../../models/subject.model';
   `]
 })
 export class UploadComponent implements OnInit {
-  uploadForm!: FormGroup;
+  uploadForm: FormGroup;
   subjects: Subject[] = [];
   selectedFile: File | null = null;
   fileError: string | null = null;
   isUploading = false;
+  uploadProgress = 0;
   
+  // Types de fichiers autorisés
+  readonly allowedFileTypes = ['application/pdf', 'text/plain'];
+  readonly maxFileSize = 10 * 1024 * 1024; // 10MB
+
   constructor(
     private fb: FormBuilder,
     private noteService: NoteService,
     private subjectService: SubjectService,
     private router: Router
-  ) {}
-  
-  ngOnInit(): void {
-    this.initForm();
-    this.loadSubjects();
-  }
-  
-  private initForm(): void {
+  ) {
     this.uploadForm = this.fb.group({
-      title: ['', Validators.required],
+      title: ['', [Validators.required, Validators.maxLength(100)]],
       subjectId: ['', Validators.required],
-      tags: ['']
+      tags: [''],
+      isShared: [false]
     });
   }
   
+  ngOnInit(): void {
+    this.loadSubjects();
+  }
+  
   private loadSubjects(): void {
-    this.subjectService.getSubjects().subscribe(subjects => {
-      this.subjects = subjects;
+    this.subjectService.getSubjects().subscribe({
+      next: (subjects) => this.subjects = subjects,
+      error: (err) => console.error('Failed to load subjects:', err)
     });
   }
   
   onFileSelected(event: Event): void {
     const fileInput = event.target as HTMLInputElement;
-    if (fileInput.files && fileInput.files.length > 0) {
+    this.fileError = null;
+    this.selectedFile = null;
+
+    if (fileInput.files?.length) {
       const file = fileInput.files[0];
       
-      // Validate file type
-      if (file.type !== 'application/pdf' && file.type !== 'text/plain') {
-        this.fileError = 'Only PDF and TXT files are allowed';
-        this.selectedFile = null;
+      // Validation du type de fichier
+      if (!this.allowedFileTypes.includes(file.type)) {
+        this.fileError = 'Seuls les fichiers PDF et TXT sont autorisés';
         return;
       }
       
-      // Validate file size (10MB limit)
-      if (file.size > 10 * 1024 * 1024) {
-        this.fileError = 'File size should not exceed 10MB';
-        this.selectedFile = null;
+      // Validation de la taille du fichier
+      if (file.size > this.maxFileSize) {
+        this.fileError = `La taille du fichier ne doit pas dépasser ${this.formatFileSize(this.maxFileSize)}`;
         return;
       }
       
       this.selectedFile = file;
-      this.fileError = null;
     }
   }
   
-  hasError(field: string): boolean {
-    const control = this.uploadForm.get(field);
-    return !!(control && control.invalid && (control.dirty || control.touched));
+  getFileType(file: File): 'pdf' | 'txt' {
+    return file.type === 'application/pdf' ? 'pdf' : 'txt';
   }
   
   formatFileSize(bytes: number): string {
@@ -275,9 +279,12 @@ export class UploadComponent implements OnInit {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    // Correction: On convertit d'abord en nombre, puis on formate la chaîne
+    const sizeValue = parseFloat((bytes / Math.pow(k, i)).toFixed(2));
+    return `${sizeValue} ${sizes[i]}`;
   }
-  
+
+
   onSubmit(): void {
     if (this.uploadForm.invalid || !this.selectedFile) {
       return;
@@ -303,24 +310,52 @@ export class UploadComponent implements OnInit {
       isShared: false
     };
     
-    this.noteService.uploadNote(noteData, this.selectedFile).subscribe(
-      (note) => {
+    this.noteService.uploadNote(noteData, this.selectedFile).subscribe({
+      next: (note) => {
         this.isUploading = false;
         this.router.navigate(['/note', note.id]);
       },
-      (error) => {
+      error: (error) => {
         console.error('Error uploading note:', error);
         this.isUploading = false;
-        // Handle error (would show an error message in a real app)
+        // In a real app, show an error message to the user
       }
-    );
+    });
   }
   
-  getFileType(file: File): 'pdf' | 'txt' {
-    return file.type === 'application/pdf' ? 'pdf' : 'txt';
+  private processTags(tagsInput: string): string[] {
+    return tagsInput 
+      ? tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag)
+      : [];
+  }
+  
+  private getSubjectName(subjectId: string): string {
+    return this.subjects.find(s => s.id === subjectId)?.name || '';
+  }
+  
+  private markFormAsTouched(): void {
+    Object.values(this.uploadForm.controls).forEach(control => {
+      control.markAsTouched();
+    });
   }
   
   cancel(): void {
-    this.router.navigate(['/dashboard']);
+    if (this.uploadForm.dirty) {
+      if (confirm('Voulez-vous vraiment annuler ? Les modifications seront perdues.')) {
+        this.router.navigate(['/dashboard']);
+      }
+    } else {
+      this.router.navigate(['/dashboard']);
+    }
   }
+
+  hasError(controlName: string): boolean {
+    const control = this.uploadForm.get(controlName);
+    return !!(
+      control && 
+      control.invalid && 
+      (control.dirty || control.touched)
+    );
+  }
+
 }

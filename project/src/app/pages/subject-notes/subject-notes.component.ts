@@ -6,11 +6,14 @@ import { SubjectService } from '../../services/subject.service';
 import { Note } from '../../models/note.model';
 import { Subject } from '../../models/subject.model';
 import { NoteCardComponent } from '../../components/note-card/note-card.component';
+import { RouterModule } from '@angular/router'; 
+
+
 
 @Component({
   selector: 'app-subject-notes',
   standalone: true,
-  imports: [CommonModule, NoteCardComponent],
+  imports: [CommonModule, NoteCardComponent, RouterModule],
   template: `
     <div class="subject-notes-page">
       <header class="page-header" *ngIf="subject">
@@ -27,12 +30,18 @@ import { NoteCardComponent } from '../../components/note-card/note-card.componen
         ></app-note-card>
       </div>
       
-      <ng-template #noNotes>
-        <div class="empty-state">
-          <p>No notes found for this subject.</p>
-          <button routerLink="/upload" class="upload-btn">Add First Note</button>
-        </div>
-      </ng-template>
+<ng-template #noNotes>
+  <div class="empty-state">
+    <p>No notes found for this subject.</p>
+    <button 
+  [routerLink]="getUploadLink()" 
+   [queryParams]="{subjectId: subject?.id}"
+  class="upload-btn"
+>
+  Add First Note
+</button>
+  </div>
+</ng-template>
     </div>
   `,
   styles: [`
@@ -126,11 +135,26 @@ export class SubjectNotesComponent implements OnInit {
     console.log('Share note:', note);
   }
   
+  // Modifiez la méthode deleteNote pour gérer les erreurs
   deleteNote(note: Note): void {
-    this.noteService.deleteNote(note.id).subscribe(success => {
-      if (success) {
-        this.notes = this.notes.filter(n => n.id !== note.id);
+    const confirmed = confirm(`Delete "${note.title}"?`);
+    if (!confirmed) return;
+
+    this.noteService.deleteNote(note).subscribe({
+      next: (success) => {
+        if (success) {
+          this.notes = this.notes.filter(n => n.id !== note.id);
+        }
+      },
+      error: (err) => {
+        console.error('Failed to delete note:', err);
+        alert('Failed to delete note. Please try again.');
       }
     });
   }
+
+  getUploadLink(): any[] {
+    return this.subject ? ['/upload', { queryParams: { subjectId: this.subject.id } }] : ['/upload'];
+  }
+
 }

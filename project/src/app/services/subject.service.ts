@@ -3,6 +3,8 @@ import { Observable, of } from 'rxjs';
 import { Subject } from '../models/subject.model';
 import { catchError, map } from 'rxjs/operators';
 import { AwsService } from './aws.service';
+import { Note } from '../models/note.model';
+import { NoteService } from './note.service';
 
 @Injectable({
   providedIn: 'root'
@@ -15,42 +17,36 @@ export class SubjectService {
     { id: '4', name: 'History', color: '#DC2626', noteCount: 2 }
   ];
 
-  constructor(private awsService: AwsService) {}
+  constructor(private awsService: AwsService,
+    private noteService: NoteService
+  ) {}
   
-  getSubjects(): Observable<Subject[]> {
-    // For demo purposes, we're returning mock data
-    // In a real app, this would fetch from DynamoDB
-    return of(this.MOCK_SUBJECTS);
-    
-    // Real implementation would be:
-    // return this.awsService.queryItems({
-    //   TableName: 'Subjects',
-    // }).pipe(
-    //   map(response => response.Items as Subject[]),
-    //   catchError(error => {
-    //     console.error('Error fetching subjects:', error);
-    //     return of([]);
-    //   })
-    // );
+  
+   // Fonction pour obtenir tous les sujets (mock + DynamoDB)
+   getSubjects(): Observable<Subject[]> {
+    return this.awsService.scan({ TableName: 'Subjects' }).pipe(
+      map((response) => {
+        const dynamoSubjects = (response.Items || []).map((item: any) => ({
+          id: item.id.S,
+          name: item.name.S,
+          color: item.color.S,
+        }));
+
+        // Ajouter les sujets mock et les sujets DynamoDB
+        return [...this.MOCK_SUBJECTS, ...dynamoSubjects];
+      })
+    );
   }
   
-  getSubject(id: string): Observable<Subject | null> {
-    // Mock implementation
-    const subject = this.MOCK_SUBJECTS.find(s => s.id === id);
-    return of(subject || null);
-    
-    // Real implementation
-    // return this.awsService.getItem({
-    //   TableName: 'Subjects',
-    //   Key: { id }
-    // }).pipe(
-    //   map(response => response.Item as Subject),
-    //   catchError(error => {
-    //     console.error(`Error fetching subject ${id}:`, error);
-    //     return of(null);
-    //   })
-    // );
+   // Fonction pour obtenir un sujet par son ID, avec les notes comptées
+   getSubject(id: string): Observable<Subject | null> {
+    return this.getSubjects().pipe(
+      map((subjects) => {
+        return subjects.find(subject => subject.id === id) || null;
+      })
+    );
   }
+
   
   createSubject(subject: Omit<Subject, 'id'>): Observable<Subject> {
     // Real implementation would create an item in DynamoDB
@@ -82,5 +78,18 @@ export class SubjectService {
     this.MOCK_SUBJECTS = this.MOCK_SUBJECTS.filter(s => s.id !== id);
     
     return of(this.MOCK_SUBJECTS.length < initialLength);
+  }
+
+  
+
+  getSubjectsWithNoteCounts(notes: Note[]): Observable<Subject[]> {
+    return this.getSubjects().pipe(
+      map((subjects) => {
+        return subjects.map(subject => ({
+          ...subject,
+          noteCount: notes.filter(note => note.subjectId === subject.id).length,
+        }));
+      })
+    );
   }
 }

@@ -8,28 +8,31 @@ import { Note } from '../../models/note.model';
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <div class="note-card">
-      <div class="file-icon" [ngClass]="note.fileType">
-        {{ note.fileType.toUpperCase() }}
-      </div>
-      <div class="note-content">
-        <h3 class="note-title">{{ note.title }}</h3>
-        <p class="subject">{{ note.subjectName }}</p>
-        <div class="meta">
-          <span class="file-info">{{ formatFileSize(note.fileSize) }}</span>
-          <span class="upload-date">{{ note.uploadDate | date:'mediumDate' }}</span>
-        </div>
-        <div class="tags" *ngIf="note.tags && note.tags.length > 0">
-          <span class="tag" *ngFor="let tag of note.tags">{{ tag }}</span>
-        </div>
-      </div>
-      <div class="actions">
-        <button class="view-btn" [routerLink]="['/note', note.id]">View</button>
-        <button class="share-btn" *ngIf="!note.isShared" (click)="onShare.emit(note)">Share</button>
-        <button class="shared-btn" *ngIf="note.isShared" (click)="onShare.emit(note)">Shared</button>
-        <button class="delete-btn" (click)="onDelete.emit(note)">Delete</button>
-      </div>
+   <div class="note-card">
+  <div class="file-icon" [ngClass]="note.fileType">
+    {{ note.fileType ? note.fileType.toUpperCase() : 'UNKNOWN' }}
+  </div>
+  <div class="note-content">
+    <h3 class="note-title">{{ note.title }}</h3>
+    <p class="subject">
+      {{ note.subjectName ? note.subjectName : 'Aucune matière' }}
+    </p>
+    <div class="meta">
+      <span class="file-info">{{ formatFileSize(note.fileSize) }}</span>
+      <span class="upload-date">{{ note.uploadDate | date:'mediumDate' }}</span>
     </div>
+    <div class="tags" *ngIf="note.tags && note.tags.length > 0">
+      <span class="tag" *ngFor="let tag of note.tags">{{ tag }}</span>
+    </div>
+  </div>
+  <div class="actions">
+    <button class="view-btn" [routerLink]="['/note', note.id]">View</button>
+    <button class="share-btn" *ngIf="!note.isShared" (click)="onShare.emit(note)">Share</button>
+    <button class="shared-btn" *ngIf="note.isShared" (click)="onShare.emit(note)">Shared</button>
+    <button class="delete-btn" (click)="onDelete.emit(note)">Delete</button>
+  </div>
+</div>
+
   `,
   styles: [`
     .note-card {

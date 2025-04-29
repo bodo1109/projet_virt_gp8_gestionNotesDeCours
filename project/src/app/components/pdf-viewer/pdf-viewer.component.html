@@ -1,0 +1,5 @@
+<div class="pdf-container">
+    <canvas id="pdfCanvas"></canvas>
+    <div *ngIf="loading" class="loading">Loading PDF...</div>
+    <div *ngIf="error" class="error">{{ error }}</div>
+  </div>

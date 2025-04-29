@@ -12,4 +12,6 @@ export interface Note {
   isShared: boolean;
   sharedWith?: string[];
   fileKey: string; // S3 file key
+  content?: string;
+  
 }

@@ -6,82 +6,103 @@ import { SubjectService } from '../../services/subject.service';
 import { Note } from '../../models/note.model';
 import { Subject } from '../../models/subject.model';
 import { NoteCardComponent } from '../../components/note-card/note-card.component';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
   imports: [CommonModule, RouterModule, NoteCardComponent],
   template: `
-    <div class="dashboard">
-      <header class="page-header">
-        <h1>Dashboard</h1>
-      </header>
-      
-      <section class="stats-section">
-        <div class="stat-card">
-          <div class="stat-value">{{ totalNotes }}</div>
-          <div class="stat-label">Total Notes</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ subjects.length }}</div>
-          <div class="stat-label">Subjects</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ sharedNotes }}</div>
-          <div class="stat-label">Shared Notes</div>
-        </div>
-      </section>
-      
-      <section class="recent-notes">
-        <div class="section-header">
-          <h2>Recent Notes</h2>
-          <a routerLink="/all-notes" class="view-all">View All</a>
-        </div>
-        
-        <div class="notes-list" *ngIf="recentNotes.length > 0; else noNotes">
-          <app-note-card 
-            *ngFor="let note of recentNotes" 
-            [note]="note"
-            (onShare)="shareNote($event)"
-            (onDelete)="deleteNote($event)"
-          ></app-note-card>
-        </div>
-        
-        <ng-template #noNotes>
-          <div class="empty-state">
-            <p>You haven't uploaded any notes yet.</p>
-            <button routerLink="/upload" class="upload-btn">Upload Your First Note</button>
-          </div>
-        </ng-template>
-      </section>
-      
-      <section class="subjects">
-        <div class="section-header">
-          <h2>Your Subjects</h2>
-          <a routerLink="/subjects/manage" class="view-all">Manage</a>
-        </div>
-        
-        <div class="subject-cards" *ngIf="subjects.length > 0; else noSubjects">
-          <div 
-            *ngFor="let subject of subjects" 
-            class="subject-card"
-            [style.background-color]="subject.color + '20'"
-            [style.border-left-color]="subject.color"
-            [routerLink]="['/subject', subject.id]"
-          >
-            <h3>{{ subject.name }}</h3>
-            <div class="note-count">{{ subject.noteCount || 0 }} notes</div>
-          </div>
-        </div>
-        
-        <ng-template #noSubjects>
-          <div class="empty-state">
-            <p>You haven't created any subjects yet.</p>
-            <button routerLink="/subjects/manage" class="create-btn">Create Your First Subject</button>
-          </div>
-        </ng-template>
-      </section>
+   <div class="dashboard">
+  <header class="page-header">
+    <h1>Dashboard</h1>
+  </header>
+
+  <section class="stats-section">
+    <div class="stat-card">
+      <div class="stat-value">{{ totalNotes }}</div>
+      <div class="stat-label">Total Notes</div>
     </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ subjects.length }}</div>
+      <div class="stat-label">Subjects</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ sharedNotes }}</div>
+      <div class="stat-label">Shared Notes</div>
+    </div>
+  </section>
+
+  <section class="recent-notes">
+    <div class="section-header">
+      <h2>Recent Notes</h2>
+      <a routerLink="/all-notes" class="view-all">View All</a>
+    </div>
+
+    <div class="notes-list" *ngIf="recentNotes.length > 0; else noNotes">
+      <app-note-card 
+        *ngFor="let note of recentNotes; trackBy: trackByNoteId"  
+        [note]="note"
+        (onShare)="shareNote($event)"
+        (onDelete)="deleteNote($event)"
+      ></app-note-card>
+    </div>
+
+    <ng-template #noNotes>
+      <div class="empty-state">
+        <p>You haven't uploaded any notes yet.</p>
+        <button routerLink="/upload" class="upload-btn">Upload Your First Note</button>
+      </div>
+    </ng-template>
+  </section>
+
+  <section class="files-section">
+    <div class="section-header">
+      <h2>Files in Bucket</h2>
+      <a routerLink="/all-files" class="view-all">View All Files</a>
+    </div>
+
+    <div class="files-list" *ngIf="files.length > 0; else noFiles">
+      <div *ngFor="let file of files" class="file-card">
+        <h3>{{ file.key }}</h3>
+        <div class="file-size">{{ file.size }} bytes</div>
+      </div>
+    </div>
+
+    <ng-template #noFiles>
+      <div class="empty-state">
+        <p>No files found in the bucket.</p>
+      </div>
+    </ng-template>
+  </section>
+
+  <section class="subjects">
+    <div class="section-header">
+      <h2>Your Subjects</h2>
+      <a routerLink="/subjects/manage" class="view-all">Manage</a>
+    </div>
+
+    <div class="subject-cards" *ngIf="subjects.length > 0; else noSubjects">
+      <div 
+        *ngFor="let subject of subjects" 
+        class="subject-card"
+        [style.background-color]="subject.color + '20'"
+        [style.border-left-color]="subject.color"
+        [routerLink]="['/subject', subject.id]"
+      >
+        <h3>{{ subject.name }}</h3>
+           </div>
+    </div>
+
+    <ng-template #noSubjects>
+      <div class="empty-state">
+        <p>You haven't created any subjects yet.</p>
+        <button routerLink="/subjects/manage" class="create-btn">Create Your First Subject</button>
+      </div>
+    </ng-template>
+  </section>
+</div>
+
   `,
   styles: [`
     .dashboard {
@@ -205,11 +226,15 @@ import { NoteCardComponent } from '../../components/note-card/note-card.componen
     }
   `]
 })
+
+
 export class DashboardComponent implements OnInit {
   recentNotes: Note[] = [];
   subjects: Subject[] = [];
   totalNotes: number = 0;
   sharedNotes: number = 0;
+  files: any[] = [];
+
   
   constructor(
     private noteService: NoteService,
@@ -217,9 +242,9 @@ export class DashboardComponent implements OnInit {
   ) {}
   
   ngOnInit(): void {
+    this.loadDashboardData();
     this.loadRecentNotes();
-    this.loadSubjects();
-    this.loadStats();
+    this.loadFiles();
   }
   
   private loadRecentNotes(): void {
@@ -228,18 +253,42 @@ export class DashboardComponent implements OnInit {
     });
   }
   
-  private loadSubjects(): void {
-    this.subjectService.getSubjects().subscribe(subjects => {
-      this.subjects = subjects;
+  loadFiles() {
+    this.noteService.listFilesInBucket().subscribe(files => {
+      this.files = files;
+    });
+  }
+
+  
+  
+  private loadSubjectsAndStats(): void {
+    forkJoin({
+      subjects: this.subjectService.getSubjects(),
+      notes: this.noteService.getNotes()
+    }).subscribe(({ subjects, notes }) => {
+      // Ajouter le nombre de notes par matière
+      this.subjects = subjects.map(subject => ({
+        ...subject,
+        noteCount: notes.filter((note:any) => 
+          note.subjectId?.toLowerCase() === subject.id?.toLowerCase()
+        ).length
+      }));
+  
+      // Statistiques globales
+      this.totalNotes = notes.length;
+      this.sharedNotes = notes.filter((note:any) => note.isShared).length;
     });
   }
   
-  private loadStats(): void {
-    this.noteService.getNotes().subscribe(notes => {
-      this.totalNotes = notes.length;
-      this.sharedNotes = notes.filter(note => note.isShared).length;
-    });
+  
+  
+
+  trackByNoteId(index: number, note: Note): string {
+    return note.id;
   }
+  
+  
+  
   
   shareNote(note: Note): void {
     // In a real app, this would open a share dialog
@@ -247,12 +296,45 @@ export class DashboardComponent implements OnInit {
   }
   
   deleteNote(note: Note): void {
-    // In a real app, this would show a confirmation dialog first
-    this.noteService.deleteNote(note.id).subscribe(success => {
+    const confirmed = confirm('Are you sure you want to delete this note?');
+    if (!confirmed) return;
+  
+    this.noteService.deleteNote(note).subscribe(success => {
       if (success) {
+        // 1. Mettre à jour la liste des notes récentes
         this.recentNotes = this.recentNotes.filter(n => n.id !== note.id);
-        this.loadStats(); // Refresh stats
+        
+        // 2. Mettre à jour les statistiques
+        this.totalNotes--;
+        if (note.isShared) {
+          this.sharedNotes--;
+        }
+        
+        // 3. Mettre à jour le compteur de notes pour les sujets si nécessaire
+        this.subjects = this.subjects.map(subject => {
+          if (subject.id === note.subjectId) {
+            return {
+              ...subject,
+              noteCount: subject.noteCount ? subject.noteCount - 1 : 0
+            };
+          }
+          return subject;
+        });
       }
     });
   }
+  private loadDashboardData(): void {
+    forkJoin({
+      notes: this.noteService.getNotes(),
+      subjects: this.subjectService.getSubjects()
+    }).subscribe({
+      next: ({ notes, subjects }) => {
+        this.totalNotes = notes.length;
+        this.sharedNotes = notes.filter((note : any) => note.isShared).length;
+        this.subjects = subjects;
+      },
+      error: (err) => console.error('Error loading dashboard data:', err)
+    });
+  }
+  
 }

@@ -84,7 +84,7 @@ export class SharedNotesComponent implements OnInit {
   }
   
   deleteNote(note: Note): void {
-    this.noteService.deleteNote(note.id).subscribe(success => {
+    this.noteService.deleteNote(note).subscribe(success => {
       if (success) {
         this.notes = this.notes.filter(n => n.id !== note.id);
       }

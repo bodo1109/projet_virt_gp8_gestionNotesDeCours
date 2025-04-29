@@ -2,7 +2,7 @@ const fs = require('fs');
 const { exec } = require('child_process');
 const AWS = require('@aws-sdk/client-dynamodb');
 const { DynamoDBClient, CreateTableCommand } = AWS;
-const { S3Client, CreateBucketCommand } = require('@aws-sdk/client-s3');
+const { S3Client, CreateBucketCommand, PutBucketCorsCommand } = require('@aws-sdk/client-s3');
 const { LambdaClient, CreateFunctionCommand } = require('@aws-sdk/client-lambda');
 
 // LocalStack configuration
@@ -33,7 +33,7 @@ const lambdaClient = new LambdaClient({
   credentials
 });
 
-// Setup S3 bucket
+// Setup S3 bucket avec CORS
 async function setupS3() {
   try {
     const bucketName = 'student-notes-bucket';
@@ -47,6 +47,25 @@ async function setupS3() {
     try {
       await s3Client.send(new CreateBucketCommand(createBucketParams));
       console.log(`S3 bucket created: ${bucketName}`);
+      
+      // Configuration CORS pour le bucket
+      const corsParams = {
+        Bucket: bucketName,
+        CORSConfiguration: {
+          CORSRules: [
+            {
+              AllowedHeaders: ["*", "x-amz-sdk-checksum-algorithm", "x-amz-content-sha256", "x-amz-date", "authorization"],
+              AllowedMethods: ["GET", "PUT", "POST", "DELETE", "HEAD"],
+              AllowedOrigins: ["*"],
+              ExposeHeaders: ["ETag"]
+            }
+          ]
+        }
+      };
+      
+      await s3Client.send(new PutBucketCorsCommand(corsParams));
+      console.log('CORS configuration set for bucket');
+      
     } catch (error) {
       if (error.name !== 'BucketAlreadyExists' && error.name !== 'BucketAlreadyOwnedByYou') {
         throw error;

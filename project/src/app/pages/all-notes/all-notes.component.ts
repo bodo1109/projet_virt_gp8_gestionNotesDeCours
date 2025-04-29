@@ -180,51 +180,88 @@ export class AllNotesComponent implements OnInit {
     private subjectService: SubjectService
   ) {}
   
-  ngOnInit(): void {
+  ngOnInit() {
     this.loadNotes();
     this.loadSubjects();
   }
   
-  private loadNotes(): void {
-    this.noteService.getNotes().subscribe(notes => {
-      this.notes = notes;
-      this.applyFilters();
-    });
+  
+   
+  
+  loadNotes() {
+    this.noteService.getNotes().subscribe(
+      (rawNotes: any[]) => {
+        console.log('Raw notes from API:', rawNotes);
+        
+        this.notes = rawNotes.map(note => ({
+          ...note,
+          // Assure que uploadDate est un objet Date
+          uploadDate: note.uploadDate ? new Date(note.uploadDate) : new Date(),
+          // Ajoute subjectName si nécessaire
+          subjectName: this.getSubjectName(note.subjectId)
+        }));
+        
+        console.log('Processed notes:', this.notes);
+        this.applyFilters(); // Applique les filtres après la récupération
+      },
+      error => {
+        console.error('Failed to load notes:', error);
+      }
+    );
+  }
+
+  private getSubjectName(subjectId: string): string {
+    const subject = this.subjects.find(s => s.id === subjectId);
+    return subject ? subject.name : 'Unknown Subject';
   }
   
   private loadSubjects(): void {
     this.subjectService.getSubjects().subscribe(subjects => {
       this.subjects = subjects;
+      // Recharge les notes si les sujets sont chargés après
+      if (this.notes.length > 0) {
+        this.notes = this.notes.map(note => ({
+          ...note,
+          subjectName: this.getSubjectName(note.subjectId)
+        }));
+        this.applyFilters();
+      }
     });
   }
   
-  applyFilters(): void {
-    let filtered = [...this.notes];
-    
-    // Apply subject filter
+  applyFilters() {
+    console.log('Applying filters:', this.subjectFilter, this.typeFilter, this.sortBy);
+
+    // Filtrage initial - toutes les notes
+    this.filteredNotes = [...this.notes];
+
+    // Filtrage par sujet (utilise subjectId au lieu de subjectName)
     if (this.subjectFilter) {
-      filtered = filtered.filter(note => note.subjectId === this.subjectFilter);
+      this.filteredNotes = this.filteredNotes.filter(note => 
+        note.subjectId === this.subjectFilter
+      );
     }
-    
-    // Apply type filter
+
+    // Filtrage par type
     if (this.typeFilter) {
-      filtered = filtered.filter(note => note.fileType === this.typeFilter);
+      this.filteredNotes = this.filteredNotes.filter(note => 
+        note.fileType === this.typeFilter
+      );
     }
-    
-    // Apply sorting
-    switch (this.sortBy) {
-      case 'newest':
-        filtered.sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
-        break;
-      case 'oldest':
-        filtered.sort((a, b) => new Date(a.uploadDate).getTime() - new Date(b.uploadDate).getTime());
-        break;
-      case 'title':
-        filtered.sort((a, b) => a.title.localeCompare(b.title));
-        break;
-    }
-    
-    this.filteredNotes = filtered;
+
+    // Tri
+    this.filteredNotes.sort((a, b) => {
+      if (this.sortBy === 'newest') {
+        return b.uploadDate.getTime() - a.uploadDate.getTime();
+      } else if (this.sortBy === 'oldest') {
+        return a.uploadDate.getTime() - b.uploadDate.getTime();
+      } else if (this.sortBy === 'title') {
+        return a.title.localeCompare(b.title);
+      }
+      return 0;
+    });
+
+    console.log('Filtered notes:', this.filteredNotes);
   }
   
   shareNote(note: Note): void {
@@ -233,11 +270,10 @@ export class AllNotesComponent implements OnInit {
   }
   
   deleteNote(note: Note): void {
-    // In a real app, this would show a confirmation dialog first
-    this.noteService.deleteNote(note.id).subscribe(success => {
+    this.noteService.deleteNote(note).subscribe(success => {
       if (success) {
         this.notes = this.notes.filter(n => n.id !== note.id);
-        this.applyFilters();
+        this.applyFilters(); // Applique à nouveau les filtres après la suppression
       }
     });
   }

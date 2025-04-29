@@ -13,8 +13,18 @@ import { NoteCardComponent } from '../../components/note-card/note-card.componen
       <header class="page-header">
         <h1>Recent Notes</h1>
       </header>
+
+      <div *ngIf="isLoading" class="loading-state">
+    <p>Loading recent notes...</p>
+  </div>
+  
+  <div *ngIf="error" class="error-state">
+    <p>{{ error }}</p>
+    <button (click)="loadRecentNotes()">Retry</button>
+  </div>
       
       <div class="notes-list" *ngIf="notes.length > 0; else noNotes">
+      <p *ngIf="notes.length === 0">Debug: Notes array is empty</p>
         <app-note-card 
           *ngFor="let note of notes" 
           [note]="note"
@@ -81,17 +91,41 @@ import { NoteCardComponent } from '../../components/note-card/note-card.componen
 })
 export class RecentNotesComponent implements OnInit {
   notes: Note[] = [];
-  
+  isLoading = true;
+  error: string | null = null;
+
   constructor(private noteService: NoteService) {}
   
   ngOnInit(): void {
     this.loadRecentNotes();
   }
   
-  private loadRecentNotes(): void {
-    this.noteService.getRecentNotes(10).subscribe(notes => {
-      this.notes = notes;
+   loadRecentNotes(): void {
+    this.isLoading = true;
+    this.error = null;
+    
+    this.noteService.getRecentNotes(10).subscribe({
+      next: (notes) => {
+        this.notes = notes.map(note => ({
+          ...note,
+          uploadDate: this.parseDate(note.uploadDate)
+        }));
+        this.isLoading = false;
+        console.log('Recent notes loaded:', this.notes);
+      },
+      error: (err) => {
+        console.error('Error loading recent notes:', err);
+        this.error = 'Failed to load recent notes';
+        this.isLoading = false;
+        this.notes = [];
+      }
     });
+  }
+
+  private parseDate(date: any): Date {
+    if (date instanceof Date) return date;
+    if (typeof date === 'string') return new Date(date);
+    return new Date(); // Fallback
   }
   
   shareNote(note: Note): void {
@@ -100,7 +134,7 @@ export class RecentNotesComponent implements OnInit {
   }
   
   deleteNote(note: Note): void {
-    this.noteService.deleteNote(note.id).subscribe(success => {
+    this.noteService.deleteNote(note).subscribe(success => {
       if (success) {
         this.notes = this.notes.filter(n => n.id !== note.id);
       }

@@ -109,7 +109,7 @@ export class SearchResultsComponent implements OnInit {
   
   deleteNote(note: Note): void {
     // In a real app, this would show a confirmation dialog first
-    this.noteService.deleteNote(note.id).subscribe(success => {
+    this.noteService.deleteNote(note).subscribe(success => {
       if (success) {
         this.notes = this.notes.filter(n => n.id !== note.id);
       }
